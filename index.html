@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+
+<html>
+  <style type = "text/css" >
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #111;
+}
+
+canvas {
+  display: block;
+  margin: 0 auto;
+}
+</style>
+
+ 
+<head>
+ <!-- Cite resources as follows -->
+  
+</head>
+<body>
+  <div id="js-app"></div>
+
+ <script src = "https://mimicproject.com/libs/maximilian.js">
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/6.20.0/polyfill.js">
+</script> 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/88/three.min.js">
+</script>
+  <!-- three-water -->
+<script src="https://codepen.io/clindsey/pen/vpbjNJ.js">
+</script>
+  <!-- orbit-controls -->
+<script src="https://codepen.io/clindsey/pen/jYdxqJ.js">
+</script>
+  
+  <!-- three.js based buffer animation system for working with instanced geometry and shader materials↓ -->
+<script src="https://unpkg.com/three-bas@2.0.2/dist/bas.min.js">
+</script> 
+  
+  <!-- seeded random number generator↓ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/2.4.3/lib/alea.js">
+</script> 
+<script>(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='//rawgit.com/mrdoob/stats.js/master/build/stats.min.js';document.head.appendChild(script);})(
+</script>
+
+</body>
+
+ <script language="javascript" type="text/javascript">
+//Load the BGM 
+//BGM: RADWIMPS - 你的名字。（Tropical House Vocal Mix）（HimSherlock remix）by HimSherlock 
+
+var audio= new Audio("HimSherlock - RADWIMPS - 你的名字。（Tropical House Vocal Mix）（HimSherlock remix）.mp3");//Loading the music sample
+audio.play();
+
+
+//--------------------Create the Island--------------------------
+// create the tinyIslandScene
+setTimeout(() => {
+  tinyIslandScene()
+}, 0)
+//Set the size of the island
+const size =2590
+//Set the segment of the island
+const segmentCount = 280
+//Set the radius of the island
+const islandRadius = 356
+//Set the elevation of the island
+const minElevation = -35
+const maxElevation = 35
+//Set the gradient of the island
+const gradientStart = 0.25
+const gradientEnd = 0.75
+//set the critter
+const critterCount = 5
+const critterSize = 24
+const critterSpeed = 4
+//set the tree
+const treeCount = 6
+const treeWidth = 34
+const treeHeight = treeWidth * (90 / 50)
+//set the seed
+let seed = 5625463739 - 4157418132
+
+// set the wave
+const config = {
+  waveHeight: 5,
+  waveDistance: 50
+}
+
+
+//Enabling the islandscene's functions
+function tinyIslandScene () {
+  const simulation = new Simulation('js-app', [], [400, 140, -100])
+  simulation.controls.minDistance = 200
+  simulation.controls.maxDistance = 600
+  simulation.controls.maxPolarAngle = Math.PI / 2 - Math.PI / 12
+  simulation.controls.enablePan = false
+  
+ 
+   //create and apply the Elements into the critters,seafoam,island,pinetree,skybox,ocean
+  const critterCrowd = new CritterCrowd(critterCount, critterSize, critterSpeed, getCritterPosition(islandRadius * gradientStart), getCritterColor(), getCritterTimeOffset(), getCritterRotationOffset())
+  critterCrowd.position.y = maxElevation
+  const seaFoam = new SeaFoam(size, segmentCount, islandRadius, minElevation, maxElevation, gradientStart, gradientEnd)
+  const island = new Island(size, segmentCount, islandRadius, minElevation, maxElevation, gradientStart, gradientEnd)
+  const pineTree = new PineTree(treeCount, treeWidth, treeHeight, getTreePosition(islandRadius * gradientStart * 0.4), getTreeScale(Math.random), getTreeRotation())
+  pineTree.position.y = maxElevation
+  const skyBox = new SkyBox()
+  const ocean = new Ocean(simulation.renderer, simulation.camera, simulation.scene, size, size, simulation.light, 128, 128)
+  simulation.scene.add(critterCrowd)
+  simulation.scene.add(seaFoam)
+  simulation.scene.add(island)
+  simulation.scene.add(pineTree)
+  simulation.scene.add(skyBox)
+  simulation.scene.add(ocean)
+  simulation.addUpdateCallback(timeDelta => {
+    critterCrowd.time += timeDelta / 1000
+    ocean.time += timeDelta / 2000
+    ocean.water.render()
+    seaFoam.theTime += timeDelta / 2000
+  })
+}
+//set the critter's position
+function getCritterPosition (radius) {
+  const lookup = {}
+  return (index, count, size) => {
+    const key = `${index} ${count} ${size}`
+    if (!lookup[key]) {
+      const theta = (index / count) * Math.PI * 2
+      const xOffset = Math.cos(theta) * radius
+      const zOffset = Math.sin(theta) * radius
+      lookup[key] = [
+        xOffset,
+        0,
+        zOffset
+      ]
+    }
+    return lookup[key]
+  }
+}
+
+//set the Critter's Color
+function getCritterColor () {
+  const lookup = {}
+  return (index, count, size, schema = 0) => {
+    const key = `${index} ${count} ${size} ${schema}`
+    if (!lookup[key]) {
+      const color = new THREE.Color()
+      const colorSeed = index + schema + 5625463739
+      const hue = alea(colorSeed)()
+      const saturation = alea(colorSeed)() * 0.3 + 0.6
+      const lightness = alea(colorSeed)() * 0.5 + 0.6
+      color.setHSL(hue, saturation, lightness)
+      lookup[key] = color
+    }
+    return lookup[key]
+  }
+}
+//set the trees rotationoffset 
+function getCritterRotationOffset () {
+  const lookup = {}
+  return (index, count, size) => {
+    const key = `${index} ${count} ${size}`
+    if (!lookup[key]) {
+      lookup[key] = [-(index / count) * Math.PI * 2 + Math.PI / 2]
+    }
+    return lookup[key]
+  }
+}
+//set the critter's rotationoffset 
+function getCritterTimeOffset () {
+  const lookup = {}
+  return (index, count, size) => {
+    const key = `${index} ${count} ${size}`
+    if (!lookup[key]) {
+      lookup[key] = [alea(index + seed++)() * Math.PI]
+    }
+    return lookup[key]
+  }
+}
+//set the trees rotation
+function getTreeRotation () {
+  const lookup = {}
+  return (index, count) => {
+    const key = `${index} ${count}`
+    if (!lookup[key]) {
+      lookup[key] = alea(index + seed++)() * Math.PI
+    }
+    return lookup[key]
+  }
+}
+//set the trees position
+function getTreePosition (radius) {
+  const lookup = {}
+  return (index, count) => {
+    const key = `${index} ${count}`
+    if (!lookup[key]) {
+      const distance = Math.sqrt(alea(index + seed++)()) * radius //learning from: http://mathworld.wolfram.com/DiskPointPicking.html
+      lookup[key] = [
+        Math.cos(index / count * Math.PI * 2) * distance,
+        0,
+        Math.sin(index / count * Math.PI * 2) * distance
+      ]
+    }
+    return lookup[key]
+  }
+}
+//set the treescale
+function getTreeScale () {
+  const lookup = {}
+  return (index, count) => {
+    const key = `${index} ${count}`
+    if (!lookup[key]) {
+      lookup[key] = alea(index + seed++)() + 0.5
+    }
+    return lookup[key]
+  }
+}
+
+//set camera , scene, light and renderer
+class Simulation {
+  constructor (domId, entities, [cameraX, cameraY, cameraZ]) {
+    this.updateCallbacks = []
+    const camera = this.createCamera(55, cameraX, cameraY, cameraZ, window.innerWidth, window.innerHeight)
+    camera.target = new THREE.Vector3(0, 0, 0)
+    camera.lookAt(camera.target)
+    const scene = new THREE.Scene()
+    this.light = this.createLights(scene)
+    const renderer = this.createRenderer(0x000000)
+    renderer.shadowMap.enabled = true
+    renderer.shadowMap.type = THREE.BasicShadowMap
+    document.getElementById(domId).appendChild(renderer.domElement)
+    const handleWindowResize = this.onWindowResize(camera, renderer)
+    handleWindowResize()
+    window.addEventListener('resize', handleWindowResize, false)
+    entities.map(e => {
+      scene.add(e)
+    })
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    this.controls = controls
+    this.animate(renderer, scene, camera, controls, entities, +(new Date()))
+    this.renderer = renderer
+    this.camera = camera
+    this.scene = scene
+  }
+
+  addUpdateCallback (callback) {
+    this.updateCallbacks.push(callback)
+  }
+
+  onWindowResize (camera, renderer) {
+    return () => {
+      const width = window.innerWidth
+      const height = window.innerHeight
+      camera.aspect = width / height
+      camera.updateProjectionMatrix()
+      renderer.setSize(width, height)
+    }
+  }
+
+  //apply the renderer, scene, camera, controls in animation
+  animate (renderer, scene, camera, controls, entities, lastTime) {
+    const currentTime = +(new Date())
+    const timeDelta = currentTime - lastTime
+    entities.forEach(e => e.time += timeDelta / 1000)
+    requestAnimationFrame(() => {
+      this.animate(renderer, scene, camera, controls, entities, currentTime)
+    })
+    controls.update()
+    this.updateCallbacks.forEach(callback => callback(timeDelta))
+    renderer.render(scene, camera)
+  }
+  
+//create camera
+  createCamera (fov, x = 0, y = 0, z = 0, width, height) {
+    const camera = new THREE.PerspectiveCamera(fov, width / height, 0.5, 30000)
+    camera.position.x = x
+    camera.position.y = y
+    camera.position.z = z
+    return camera
+  }
+//create lights
+  createLights (scene) {
+    scene.add(new THREE.AmbientLight(0xcccccc))
+    const directionalLight = new THREE.DirectionalLight(0xffffff)
+    directionalLight.position.set.apply(directionalLight.position, new THREE.Vector3(-1, 1,-1).normalize().multiplyScalar(512).toArray())
+    directionalLight.castShadow = true
+    directionalLight.shadow.camera.near = 0
+    directionalLight.shadow.camera.far = 3072
+    directionalLight.shadow.camera.right = 256
+    directionalLight.shadow.camera.left = -256
+    directionalLight.shadow.camera.top = 512
+    directionalLight.shadow.camera.bottom = -512
+    directionalLight.shadow.mapSize.width = 2048
+    directionalLight.shadow.mapSize.height = 2048
+    scene.add(directionalLight)
+    
+    return directionalLight
+  }
+//create renderer
+  createRenderer (clearColor = 0x000000) {
+    const renderer = new THREE.WebGLRenderer({
+      antialias: false,
+      alpha: true
+    })
+    renderer.setPixelRatio(window.devicePixelRatio)
+    renderer.autoClear = true
+    renderer.setClearColor(clearColor, 0)
+    return renderer
+  }
+}
+
+//create the ocean
+class Ocean extends THREE.Mesh {
+  constructor (renderer, camera, scene, width, height, light, horizontalSegments = 128, verticalSegments = 128) {
+    const loader = new THREE.TextureLoader()
+    const waterNormals = loader.load('https://forum.lumion.com/index.php?action=dlattach;topic=5253.0;attach=11103;image')
+    waterNormals.wrapS = waterNormals.wrapT = THREE.RepeatWrapping
+    const water = new THREE.Water(renderer, camera, scene, {
+      textureWidth: 2048,
+      textureHeight: 2048,
+      waterNormals,
+      alpha: 0.9,
+      sunDirection: light.position.clone().normalize(),
+      sunColor: 0xffffff,
+      waterColor: 0x10001E,
+      distortionScale: 0.5,
+      fog: scene.fog != undefined
+    })
+   
+    const geometry = new THREE.PlaneBufferGeometry(width, height, horizontalSegments, verticalSegments)
+    super(geometry, water.material)
+    this.add(water)
+    this.rotation.x = -Math.PI * 0.5
+    this.water = water
+  }
+
+  set time (newTime) {
+    this.water.material.uniforms.time.value = newTime
+  }
+
+  get time () {
+    return this.water.material.uniforms.time.value
+  }
+}
+//Setting the ebb and flow of the waves
+const calculateSurfaceVertexShader = (waveHeight, waveDistance) => `
+  const float seed = 5625463739.0;
+  float calculateSurface (float t, float x, float z) {
+      float strength = ${waveHeight}.0; // height of waves
+      float uVertexScale = ${waveDistance}.0; // distance between waves
+      float y = 0.0;
+      y += (sin(x * 1.0 / uVertexScale + t * 1.0) + sin(x * 2.3 / uVertexScale + t * 1.5) + sin(x * 3.3 / uVertexScale + t * 0.4)) / 3.0;
+      y += (sin(z * 0.2 / uVertexScale + t * 1.8) + sin(z * 1.8 / uVertexScale + t * 3.8) + sin(z * 2.8 / uVertexScale + t * 0.8)) / 3.0;
+      return y * strength;
+  }
+`
+//set the skybox
+class SkyBox extends THREE.Mesh {
+  constructor () {
+    const cubeMap = new THREE.CubeTexture([])
+    cubeMap.format = THREE.RGBFormat
+    const loader = new THREE.ImageLoader()
+    loader.load('sunset2.png', image => {
+      const getSide = (x, y) => {
+        const size = 1024
+        const canvas = document.createElement('canvas')
+        canvas.width = size
+        canvas.height = size
+        const context = canvas.getContext('2d')
+        context.drawImage(image, -x * size, -y * size)
+        return canvas
+      }
+      cubeMap.images[0] = getSide(2, 1) // px
+      cubeMap.images[1] = getSide(0, 1) // nx
+      cubeMap.images[2] = getSide(1, 0) // py
+      cubeMap.images[3] = getSide(1, 2) // ny
+      cubeMap.images[4] = getSide(1, 1) // pz
+      cubeMap.images[5] = getSide(3, 1) // nz
+      cubeMap.needsUpdate = true
+    })
+    const cubeShader = THREE.ShaderLib['cube']
+    cubeShader.uniforms['tCube'].value = cubeMap
+    const skyBoxMaterial = new THREE.ShaderMaterial({
+      fragmentShader: cubeShader.fragmentShader,
+      vertexShader: cubeShader.vertexShader,
+      uniforms: cubeShader.uniforms,
+      depthWrite: false,
+      side: THREE.BackSide
+    })
+    const geometry = new THREE.BoxGeometry(10000, 10000, 10000)
+    super(geometry, skyBoxMaterial)
+  }
+}
+
+//Set the island
+class Island extends THREE.Mesh {
+  constructor (size, segments, radius, minElevation, maxElevation, gradientStart, gradientEnd) {
+    const geometry = new THREE.PlaneGeometry(size, size, segments, segments)
+    const material = new BAS.PhongAnimationMaterial({
+      uniforms: {
+        uRadius: {value: radius},
+        uMaxElevation: {value: Math.abs(minElevation) + maxElevation},
+        uGradientStart: {value: gradientStart},
+        uGradientEnd: {value: gradientEnd},
+        uSandTexture: {value: null},
+        uGrassTexture: {value: null},
+        uStoneTexture: {value: null}
+      },
+      vertexParameters: [`
+        uniform float uRadius;
+        uniform float uMaxElevation;
+        uniform float uGradientStart;
+        uniform float uGradientEnd;
+        varying vec2 vUv;
+        varying vec3 vTransformed;
+        varying float vRockiness;
+      `],
+      vertexFunctions: [
+        calculateSurfaceVertexShader(3, 120)
+      ],
+      vertexPosition: [`
+        transformed.z += uMaxElevation * (1.0 - smoothstep(uGradientStart, uGradientEnd, length(transformed.xy) / uRadius));
+      `],
+      vertexColor: [`
+        vTransformed = transformed;
+        vUv = uv;
+        vRockiness = (calculateSurface(0.0, transformed.x, transformed.y) + 1.0) / 2.0;
+      `],
+      fragmentParameters: [`
+        uniform sampler2D uGrassTexture;
+        uniform sampler2D uSandTexture;
+        uniform sampler2D uStoneTexture;
+        uniform float uMaxElevation;
+        varying vec2 vUv;
+        varying vec3 vTransformed;
+        varying float vRockiness;
+      `],
+      //设置小岛的打光
+      fragmentDiffuse: [`
+        diffuseColor.rgb = vec3(0.0);
+        diffuseColor.rgb += smoothstep(0.4, 0.8, length(vTransformed.z) / uMaxElevation) * texture2D(uSandTexture, vUv).rgb;
+        diffuseColor.rgb = smoothstep(0.6, 0.8, 1.0 - vRockiness) * diffuseColor.rgb;
+        diffuseColor.rgb += smoothstep(0.8, 0.6, 1.0 - vRockiness) * texture2D(uGrassTexture, vUv).rgb;
+        diffuseColor.rgb = smoothstep(0.6, 0.8, length(vTransformed.z) / uMaxElevation) * diffuseColor.rgb;
+        diffuseColor.rgb += smoothstep(0.8, 0.5, length(vTransformed.z) / uMaxElevation) * texture2D(uStoneTexture, vUv).rgb;
+      `]
+    })
+    super(geometry, material)
+    this.rotation.x = -Math.PI / 2
+    this.position.y = minElevation
+    this.castShadow = false
+    this.receiveShadow = true
+    //Set the texture of the island
+    new Promise(async () => {
+      const sandTexture = await loadTexture('截屏2021-01-13 下午9.02.04.png')
+      const stoneTexture = await loadTexture('截屏2021-01-13 下午9.02.04.png')
+      const grassTexture = await loadTexture('截屏2021-01-13 下午8.55.20.png')
+      this.material.uniforms.uSandTexture.value = sandTexture
+      this.material.uniforms.uStoneTexture.value = stoneTexture
+      this.material.uniforms.uGrassTexture.value = grassTexture
+    })
+  }
+}
+
+//load the island of the texture
+function loadTexture (textureUri) {
+  return new Promise(resolve => {
+    const loader = new THREE.TextureLoader()
+    loader.load(textureUri, texture => resolve(texture))
+  })
+}
+
+//set the seafoam
+class SeaFoam extends THREE.Mesh {
+  constructor (size, segments, radius, minElevation, maxElevation, gradientStart, gradientEnd) {
+    const geometry = new THREE.PlaneGeometry(size, size, segments, segments)
+    const material = new BAS.BasicAnimationMaterial({
+      transparent: true,
+      uniforms: {
+        uRadius: {value: radius},
+        uMaxElevation: {value: Math.abs(minElevation) + maxElevation},
+        uGradientStart: {value: gradientStart * 2},
+        uGradientEnd: {value: gradientStart * 2.3},
+        uOffset: {value: new THREE.Vector2(0, 0)},
+        uTime: {value: 0},
+        uWaterTexture: {value: null}
+      },
+      vertexParameters: [`
+        uniform vec2 uOffset;
+        uniform float uTime;
+        uniform float uRadius;
+        uniform float uMaxElevation;
+        uniform float uGradientStart;
+        uniform float uGradientEnd;
+        varying float vAlpha;
+        uniform sampler2D uWaterTexture;
+      `],
+      vertexFunctions: [
+        calculateSurfaceVertexShader(config.waveHeight, config.waveDistance)
+      ],
+      vertexPosition: [`
+        transformed.z += calculateSurface(uTime * 2.0, transformed.x + uOffset.x, transformed.y + uOffset.y);
+      `],
+      vertexColor: [`
+        float factor = (1.0 - smoothstep(uGradientStart, uGradientEnd, length(transformed.xy) / uRadius));
+        vAlpha = texture2D(uWaterTexture, uv + vec2(cos(uTime) * 0.02, sin(uTime) * 0.02)).r * factor;
+      `],
+      fragmentParameters: [`
+        varying float vAlpha;
+      `],
+      fragmentDiffuse: [`
+        diffuseColor.rgb = vec3(1.0);
+        diffuseColor.a = vAlpha;
+      `]
+    });
+    super(geometry, material)
+    this.rotation.x = -Math.PI / 2
+    this.position.y += 0.2
+    //load the texture of the water
+    new Promise(async () => {
+      const waterTexture = await loadTexture('https://us.v-cdn.net/5021068/uploads/editor/w9/gajtbeq9cbdm.png')
+      this.material.uniforms.uWaterTexture.value = waterTexture
+    })
+  }
+
+  get theTime () {
+    return this.material.uniforms.uTime.value
+  }
+
+  set theTime (newTime) {
+    this.material.uniforms.uTime.value = newTime
+  }
+}
+
+    //set the pinetree
+class PineTree extends THREE.Group {
+  constructor (count, width, height, getPosition, getScale, getRotation) {
+    super()
+    const trunkHeight = height * 0.55
+    this.pineTops = new PineTops(count, width, height, trunkHeight, getPosition, getScale, getRotation)
+    this.pineTrunks = new PineTrunks(count, width, trunkHeight, getPosition, getScale, getRotation)
+    this.add(this.pineTops)
+    this.add(this.pineTrunks)
+  }
+
+  get time () {
+    return this.currentTime
+  }
+
+  set time (newTime) {
+    this.currentTime = newTime
+    this.pineTops.material.uniforms.uTime.value = this.currentTime
+    this.pineTops.customDepthMaterial.uniforms.uTime.value = this.currentTime
+    this.pineTrunks.material.uniforms.uTime.value = this.currentTime
+    this.pineTrunks.customDepthMaterial.uniforms.uTime.value = this.currentTime
+  }
+}
+
+    //set the pinetrunks
+
+class PineTrunks extends THREE.Mesh {
+  constructor (count, width, height, getPosition, getScale, getRotation) {
+    const baseGeometry = new THREE.BoxGeometry(
+      width / 4,
+      height,
+      width / 4
+    )
+    const geometry = new BAS.PrefabBufferGeometry(baseGeometry, count)
+    const aPosition = geometry.createAttribute('aPosition', 3)
+    const aColor = geometry.createAttribute('aColor', 3)
+    const aScale = geometry.createAttribute('aScale', 1)
+    const aRotation = geometry.createAttribute('aRotation', 1)
+    for (let index = 0; index < count; index++) {
+      geometry.setPrefabData(aPosition, index, getPosition(index, count))
+      geometry.setPrefabData(aColor, index, [0.5450980392156862, 0.27058823529411763, 0.07450980392156863])
+      geometry.setPrefabData(aScale, index, [getScale(index, count)])
+      geometry.setPrefabData(aRotation, index, [getRotation(index, count)])
+    }
+    geometry.translate(0, height * 0.5, 0)
+    geometry.bufferUvs()
+    const material = new BAS.StandardAnimationMaterial({
+      flatShading: true,
+      uniforms: {
+        uTime: {value: null}
+      },
+      vertexFunctions: [
+        BAS.ShaderChunk['quaternion_rotation']
+      ],
+      vertexInit: [`
+        vec4 tQuatRotation = quatFromAxisAngle(vec3(0.0, 1.0, 0.0), aRotation);
+      `],
+      vertexParameters: [`
+        attribute vec3 aPosition;
+        attribute vec3 aColor;
+        attribute float aScale;
+        attribute float aRotation;
+      `],
+      varyingParameters: [`
+        varying vec3 vColor;
+      `],
+      vertexPosition: [`
+        transformed = rotateVector(tQuatRotation, transformed);
+        transformed *= aScale;
+        transformed += aPosition;
+      `],
+      vertexNormal: [`
+        objectNormal = rotateVector(tQuatRotation, objectNormal);
+      `],
+      vertexColor: [`
+        vColor = aColor;
+      `],
+      fragmentDiffuse: [`
+        diffuseColor.rgb = vColor;
+      `]
+    })
+    super(geometry, material)
+    this.frustumCulled = false
+    this.castShadow = true
+    this.customDepthMaterial = BAS.Utils.createDepthAnimationMaterial(material)
+  }
+
+  set time (newTime) {
+    this.material.uniforms.uTime.value = newTime
+    this.customDepthMaterial.uniforms.uTime = newTime
+  }
+
+  get time () {
+    return this.material.uniforms.value
+  }
+}
+
+    
+//set the pinetops
+
+class PineTops extends THREE.Mesh {
+  constructor (count, width, height, trunkHeight, getPosition, getScale, getRotation) {
+    const baseGeometry = new THREE.ConeGeometry(
+      width,
+      height,
+      4
+    )
+    const geometry = new BAS.PrefabBufferGeometry(baseGeometry, count)
+    const aRotation = geometry.createAttribute('aRotation', 1)
+    const aPosition = geometry.createAttribute('aPosition', 3)
+    const aColor = geometry.createAttribute('aColor', 3)
+    const aScale = geometry.createAttribute('aScale', 1)
+    for (let index = 0; index < count; index++) {
+      const scale = getScale(index, count)
+      const pos = [...getPosition(index, count)]
+      pos[1] += trunkHeight * scale
+      geometry.setPrefabData(aPosition, index, pos)
+      //geometry.setPrefabData(aColor, index, [0.13333333333333333, 0.5450980392156862, 0.13333333333333333])
+      geometry.setPrefabData(aColor, index, [0.5, 0.7, 0.2])
+      //geometry.setPrefabData(aColor, index, [0.2, 0.5, 0.2])
+      
+      geometry.setPrefabData(aScale, index, [scale])
+      geometry.setPrefabData(aRotation, index, [getRotation(index, count)])
+    }
+    geometry.translate(0, height * 0.4, 0)
+    geometry.bufferUvs()
+    const material = new BAS.StandardAnimationMaterial({
+      flatShading: true,
+      uniforms: {
+        uTime: {value: null},
+      },
+      varyingParameters: [`
+        varying vec3 vColor;
+      `],
+      vertexFunctions: [
+        BAS.ShaderChunk['quaternion_rotation']
+      ],
+      vertexInit: [`
+        vec4 tQuatRotation = quatFromAxisAngle(vec3(0.0, 1.0, 0.0), aRotation);
+      `],
+      vertexParameters: [`
+        attribute vec3 aPosition;
+        attribute vec3 aColor;
+        attribute float aScale;
+        attribute float aRotation;
+      `],
+      vertexNormal: [`
+        objectNormal = rotateVector(tQuatRotation, objectNormal);
+      `],
+      vertexColor: [`
+        vColor = aColor;
+      `],
+      vertexPosition: [`
+        transformed = rotateVector(tQuatRotation, transformed);
+        transformed *= aScale;
+        transformed += aPosition;
+      `],
+      fragmentDiffuse: [`
+        diffuseColor.rgb = vColor;
+      `]
+    })
+    super(geometry, material)
+    this.frustumCulled = false
+    this.castShadow = true
+    this.receiveShadow = true
+    this.customDepthMaterial = BAS.Utils.createDepthAnimationMaterial(material)
+  }
+
+  set time (newTime) {
+    this.material.uniforms.uTime.value = newTime
+    this.customDepthMaterial.uniforms.uTime = newTime
+  }
+
+  get time () {
+    return this.material.uniforms.value
+  }
+}
+
+//set the crittercrowd
+class CritterCrowd extends THREE.Group {
+  constructor (count, size, speed, getPosition, getColor, getTimeOffset, getRotationOffset) {
+    super()
+    this.currentTime = 0
+    this.bodyParts = [
+      new CritterHeads(count, size, speed, getPosition, getColor, getTimeOffset, getRotationOffset),
+      new CritterTorsos(count, size, speed, getPosition, getColor, getTimeOffset, getRotationOffset),
+      new CritterHands(count, size, speed, getPosition, getColor, getTimeOffset, getRotationOffset), // right
+      new CritterHands(count, size, speed, getPosition, getColor, getTimeOffset, getRotationOffset, true), // left
+      new CritterFeet(count, size, speed, getPosition, getColor, getTimeOffset, getRotationOffset), // right
+      new CritterFeet(count, size, speed, getPosition, getColor, getTimeOffset, getRotationOffset, true) // left
+    ]
+    this.bodyParts.forEach(i => this.add(i))
+  }
+
+  get time () {
+    return this.currentTime
+  }
+
+  set time (newTime) {
+    this.currentTime = newTime
+    this.bodyParts.forEach(part => {
+      part.material.uniforms.uTime.value = this.currentTime
+      part.customDepthMaterial.uniforms.uTime.value = this.currentTime
+    })
+  }
+}
+
+//set the CritterHeads
+class CritterHeads extends THREE.Mesh {
+  constructor (count, size, speed, getPosition, getColor, getTimeOffset, getRotationOffset) {
+    const material = new BAS.StandardAnimationMaterial({
+      flatShading: true,
+      side: THREE.FrontSide,
+      uniforms: {
+        uTime: {value: 0},
+        uSize: {value: size*0.35},
+        uSpeed: {value: speed}
+      },
+      varyingParameters: [`
+        varying vec3 vColor;
+      `],
+      vertexFunctions: [
+        BAS.ShaderChunk['quaternion_rotation']
+      ],
+      vertexParameters: [`
+        uniform float uTime;
+        uniform float uSize;
+        uniform float uSpeed;
+        attribute float aTimeOffset;
+        attribute vec3 aColor;
+        attribute vec3 aPosition;
+        attribute float aRotationOffset;
+      `],
+      vertexInit: [`
+        float time = uTime * uSpeed + aTimeOffset;
+        vec4 tQuatRotation = quatFromAxisAngle(vec3(0.0, 1.0, 0.0), time * 0.08);
+        vec4 tQuatWalkAngle = quatFromAxisAngle(vec3(0.0, 1.0, 0.0), time * 0.08 + aRotationOffset);
+        vec4 tQuatOrientX = quatFromAxisAngle(vec3(1.0, 0.0, 0.0), -cos(time) * 0.08);
+        vec4 tQuatOrientY = quatFromAxisAngle(vec3(0.0, 1.0, 0.0), cos(time) * 0.04); // not sure if this is supposed to be negative
+      `],
+      vertexNormal: [`
+        objectNormal = rotateVector(tQuatOrientX, objectNormal);
+        objectNormal = rotateVector(tQuatOrientY, objectNormal);
+      `],
+      vertexPosition: [`
+        transformed = rotateVector(tQuatOrientX, transformed);
+        transformed = rotateVector(tQuatOrientY, transformed);
+        transformed = rotateVector( tQuatWalkAngle, transformed);
+        transformed += rotateVector(tQuatRotation, aPosition);
+        transformed.y += uSize * 1.5; // 16 = 21
+        transformed.y += cos(time * 2.0) * (uSize * 0.0075); // 16 = 1.2
+      `],
+      vertexColor: [`
+        vColor = vec3(aColor);
+      `],
+      fragmentDiffuse: [`
+        diffuseColor.xyz = vColor;
+      `]
+    })
+    const baseGeometry = new THREE.BoxGeometry(18,18,18,8,1,1)
+    const geometry = new BAS.PrefabBufferGeometry(baseGeometry, count)
+    geometry.bufferUvs()
+    const aRotationOffset = geometry.createAttribute('aRotationOffset', 1)
+    const aColor = geometry.createAttribute('aColor', 3)
+    const aPosition = geometry.createAttribute('aPosition', 3)
+    const aTimeOffset = geometry.createAttribute('aTimeOffset', 3)
+    for (let i = 0; i < count; i++) {
+      const color = getColor(i, count, size)
+      geometry.setPrefabData(aColor, i, color.toArray())
+      geometry.setPrefabData(aPosition, i, getPosition(i, count, size))
+      geometry.setPrefabData(aTimeOffset, i, getTimeOffset(i, count, size))
+      geometry.setPrefabData(aRotationOffset, i, getRotationOffset(i, count, size))
+    }
+    super(geometry, material)
+    this.frustumCulled = false
+    this.receiveShadow = true
+    this.castShadow = true
+    this.customDepthMaterial = BAS.Utils.createDepthAnimationMaterial(material)
+  }
+}
+
+//set the critter feet
+class CritterFeet extends THREE.Mesh {
+  constructor (count, size, speed, getPosition, getColor, getTimeOffset, getRotationOffset, isLeftSide = false) {
+    const material = new BAS.StandardAnimationMaterial({
+      flatShading: true,
+      side: THREE.FrontSide,
+      uniforms: {
+        uTime: {value: 0},
+        uSize: {value: size*0.6},
+        uIsLeftSide: {value: isLeftSide},
+        uSpeed: {value: speed}
+      },
+      varyingParameters: [`
+        varying vec3 vColor;
+      `],
+      vertexFunctions: [
+        BAS.ShaderChunk['quaternion_rotation']
+      ],
+      vertexParameters: [`
+        uniform float uTime;
+        uniform float uSpeed;
+        uniform float uSize;
+        uniform bool uIsLeftSide;
+        attribute float aTimeOffset;
+        attribute vec3 aColor;
+        attribute vec3 aPosition;
+        attribute float aRotationOffset;
+      `],
+      vertexInit: [`
+        float time = uTime * uSpeed + aTimeOffset;
+        vec4 tQuatRotation = quatFromAxisAngle(vec3(0.0, 1.0, 0.0), time * 0.08);
+        vec4 tQuatWalkAngle = quatFromAxisAngle(vec3(0.0, 1.0, 0.0), time * 0.08 + aRotationOffset);
+        vec4 tQuatOrient = vec4(0.0, 0.0, 0.0, 0.0);
+        if (uIsLeftSide) {
+          tQuatOrient = quatFromAxisAngle(vec3(0.0, 0.0, 1.0), 0.0);
+          if (mod(time, PI * 2.0) > PI) {
+            tQuatOrient = quatFromAxisAngle(vec3(0.0, 0.0, 1.0), cos(time * 2.0 + PI / 2.0) * (PI / 4.0));
+          }
+        } else {
+          tQuatOrient = quatFromAxisAngle(vec3(0.0, 0.0, 1.0), cos(time * 2.0 + PI / 2.0) * (PI / 4.0));
+          if (mod(time, PI * 2.0) > PI) {
+            tQuatOrient = quatFromAxisAngle(vec3(0.0, 0.0, 1.0), 0.0);
+          }
+        }
+      `],
+      vertexNormal: [`
+        objectNormal = rotateVector(tQuatOrient, objectNormal);
+      `],
+      vertexPosition: [`
+        transformed = rotateVector(tQuatOrient, transformed);
+        float zOffset = uSize * 0.6375; // 16 = 7
+        if (uIsLeftSide) {
+          transformed.z -= zOffset;
+          transformed.x += cos(time) * uSize * 0.25; // 16 = 4
+          transformed.y += max(0.0, -sin(time) * uSize * 0.25); // 16 = 4
+        } else {
+          transformed.z += zOffset;
+          transformed.x += cos(time + PI) * uSize * 0.25; // 16 = 4
+          transformed.y += max(0.0, -sin(time + PI) * uSize * 0.25); // 16 = 4
+        }
+        transformed = rotateVector(tQuatWalkAngle, transformed);
+        transformed += rotateVector(tQuatRotation, aPosition);
+      `],
+      vertexColor: [`
+        vColor = vec3(aColor);
+      `],
+      fragmentDiffuse: [`
+        diffuseColor.xyz = vColor;
+      `]
+    })
+    //change the size of the feet
+    const baseGeometry = new THREE.BoxGeometry(size /3, size/3, size / 3, 1)
+    const geometry = new BAS.PrefabBufferGeometry(baseGeometry, count)
+    geometry.bufferUvs()
+    const aRotationOffset = geometry.createAttribute('aRotationOffset', 1)
+    const aColor = geometry.createAttribute('aColor', 3)
+    const aPosition = geometry.createAttribute('aPosition', 3)
+    const aTimeOffset = geometry.createAttribute('aTimeOffset', 1)
+    for (let i = 0; i < count; i++) {
+      const color = getColor(i, count, size, 1)
+      geometry.setPrefabData(aColor, i, color.toArray())
+      geometry.setPrefabData(aPosition, i, getPosition(i, count, size))
+      geometry.setPrefabData(aTimeOffset, i, getTimeOffset(i, count, size))
+      geometry.setPrefabData(aRotationOffset, i, getRotationOffset(i, count, size))
+    }
+    super(geometry, material)
+    this.frustumCulled = false
+    this.receiveShadow = true
+    this.castShadow = true
+    this.customDepthMaterial = BAS.Utils.createDepthAnimationMaterial(material)
+  }
+}
+
+//set the critterhands
+class CritterHands extends THREE.Mesh {
+  constructor (count, size, speed, getPosition, getColor, getTimeOffset, getRotationOffset, isLeftSide = false) {
+    const material = new BAS.StandardAnimationMaterial({
+      flatShading: true,
+      side: THREE.FrontSide,
+      uniforms: {
+        uTime: {value: 0},
+        uSize: {value: size*0.8},
+        uIsLeftSide: {value: isLeftSide},
+        uSpeed: {value: speed}
+      },
+      varyingParameters: [`
+        varying vec3 vColor;
+      `],
+      vertexFunctions: [
+        BAS.ShaderChunk['quaternion_rotation']
+      ],
+      vertexParameters: [`
+        uniform float uTime;
+        uniform float uSize;
+        uniform float uSpeed;
+        uniform bool uIsLeftSide;
+        attribute float aTimeOffset;
+        attribute vec3 aColor;
+        attribute vec3 aPosition;
+        attribute float aRotationOffset;
+      `],
+      vertexInit: [`
+        float time = uTime * uSpeed + aTimeOffset;
+        vec4 tQuatRotation = quatFromAxisAngle(vec3(0.0, 1.0, 0.0), time * 0.08);
+        vec4 tQuatWalkAngle = quatFromAxisAngle(vec3(0.0, 1.0, 0.0), time * 0.08 + aRotationOffset);
+        vec4 tQuatOrient = quatFromAxisAngle(vec3(0.0, 0.0, 1.0), cos(time) * (PI / 4.0));
+        if (uIsLeftSide) {
+          tQuatOrient = quatFromAxisAngle(vec3(0.0, 0.0, 1.0), -cos(time) * (PI / 4.0));
+        }
+      `],
+      vertexNormal: [`
+        objectNormal = rotateVector(tQuatOrient, objectNormal);
+      `],
+      vertexPosition: [`
+        transformed = rotateVector(tQuatOrient, transformed);
+        transformed.y += uSize * 0.68; // 16 = 8
+        float z = uSize * 0.7; // 16 = 7
+        if (uIsLeftSide) {
+          transformed.z -= z;
+          transformed.x += -cos(time) * (uSize / 3.0); // 16 = 4
+        } else {
+          transformed.z += z;
+          transformed.x += cos(time) * (uSize / 4.0); // 16 = 4
+        }
+        transformed = rotateVector(tQuatWalkAngle, transformed);
+        transformed += rotateVector(tQuatRotation, aPosition);
+      `],
+      vertexColor: [`
+        vColor = vec3(aColor);
+      `],
+      fragmentDiffuse: [`
+        diffuseColor.xyz = vColor;
+      `]
+    })
+    const geometrySize = size * 0.25
+    const baseGeometry = new THREE.BoxGeometry(geometrySize, geometrySize, geometrySize, 1)
+   
+    const geometry = new BAS.PrefabBufferGeometry(baseGeometry, count)
+    geometry.bufferUvs()
+    const aRotationOffset = geometry.createAttribute('aRotationOffset', 1)
+    const aColor = geometry.createAttribute('aColor', 3)
+    const aPosition = geometry.createAttribute('aPosition', 3)
+    const aTimeOffset = geometry.createAttribute('aTimeOffset', 1)
+    for (let i = 0; i < count; i++) {
+      const color = getColor(i, count, size, 1)
+      geometry.setPrefabData(aColor, i, color.toArray())
+      geometry.setPrefabData(aPosition, i, getPosition(i, count, size))
+      geometry.setPrefabData(aTimeOffset, i, getTimeOffset(i, count, size))
+      geometry.setPrefabData(aRotationOffset, i, getRotationOffset(i, count, size))
+    }
+    super(geometry, material)
+    this.frustumCulled = false
+    this.receiveShadow = true
+    this.castShadow = true
+    this.customDepthMaterial = BAS.Utils.createDepthAnimationMaterial(material)
+  }
+}
+
+//set the floatingblocks
+class CritterTorsos extends THREE.Mesh {
+  constructor (count, size, speed, getPosition, getColor, getTimeOffset, getRotationOffset) {
+    const material = new BAS.StandardAnimationMaterial({
+      flatShading: true,
+      side: THREE.FrontSide,
+      uniforms: {
+        uTime: {value: 0},
+        uSize: {value: size*0.001},
+        uSpeed: {value: speed*0.02}
+      },
+      varyingParameters: [`
+        varying vec3 vColor;
+      `],
+      vertexFunctions: [
+        BAS.ShaderChunk['quaternion_rotation']
+      ],
+      vertexParameters: [`
+        uniform float uTime;
+        uniform float uSize;
+        uniform float uSpeed;
+        attribute float aTimeOffset;
+        attribute vec3 aColor;
+        attribute vec3 aPosition;
+        attribute float aRotationOffset;
+      `],
+      vertexInit: [`
+        float time = uTime * uSpeed + aTimeOffset;
+        vec4 tQuatRotation = quatFromAxisAngle(vec3(0.0, 5.0, 0.0), time * 2.08);
+        vec4 tQuatWalkAngle = quatFromAxisAngle(vec3(0.0, 2.0, 0.0), time * 1.08 + aRotationOffset);
+        vec4 tQuatOrient = quatFromAxisAngle(vec3(0.0, 1.0, 0.0), cos(time + PI) * 0.1);
+      `],
+      vertexNormal: [`
+        objectNormal = rotateVector(tQuatOrient, objectNormal);
+      `],
+      vertexPosition: [`
+        transformed = rotateVector(tQuatOrient, transformed);
+        transformed = rotateVector(tQuatWalkAngle, transformed);
+        transformed += rotateVector(tQuatRotation, aPosition);
+        transformed.y += uSize * 0.05; // 16 = 8
+        transformed.y += cos(time * 1.6) * (uSize * 0.75); // 16 = 0.8
+      `],
+      vertexColor: [`
+        vColor = vec3(0xf49cc3);
+      `],
+      fragmentDiffuse: [`
+        diffuseColor.xyz = vColor;
+      `]
+    })
+    const geometrySize = size / 3
+    const baseGeometry = new THREE.BoxGeometry(geometrySize, geometrySize, geometrySize, 1)
+    const geometry = new BAS.PrefabBufferGeometry(baseGeometry, count)
+    geometry.bufferUvs()
+    const aRotationOffset = geometry.createAttribute('aRotationOffset', 1)
+    const aColor = geometry.createAttribute('aColor', 3)
+    const aPosition = geometry.createAttribute('aPosition', 3)
+    const aTimeOffset = geometry.createAttribute('aTimeOffset', 1)
+    for (let i = 0; i < count; i++) {
+      const color = getColor(i, count, size)
+      geometry.setPrefabData(aColor, i, color.toArray())
+      geometry.setPrefabData(aPosition, i, getPosition(i, count, size*0.5))
+      geometry.setPrefabData(aTimeOffset, i, getTimeOffset(i, count, size*0.5))
+      geometry.setPrefabData(aRotationOffset, i, getRotationOffset(i, count, size))
+    }
+    super(geometry, material)
+    this.frustumCulled = false
+    this.receiveShadow = true
+    this.castShadow = true
+    this.customDepthMaterial = BAS.Utils.createDepthAnimationMaterial(material)
+  }
+}
+
+</script>
+   <script language="javascript" type="text/javascript">
+//set the beats to be added in bgm 
+//harp & guitar
+  	var maxi = maximilian();
+
+
+	var maxiEngine = new maxi.maxiAudio();
+	
+	//create a bunch of stuff
+    var piano = new maxi.maxiSample();
+    var guitar = new maxi.maxiSample();
+    var celesta = new maxi.maxiSample();
+    var churchring = new maxi.maxiSample();
+ var Harp = new maxi.maxiSample();
+    var myOsc = new maxi.maxiOsc();
+    var myOsc2 = new maxi.maxiOsc();
+    var myClock = new maxi.maxiClock();
+  	var scratch=0;
+    var counter = 0;
+   myClock.setTempo(20);
+    myClock.setTicksPerBeat(4);
+  
+	//when the play button is pressed...
+	let playAudio = () => {
+	 
+	
+	  //start the audio engine
+	  maxiEngine.init();
+	  //the sample is from freesound https://freesound.org/people/schafferdavid/sounds/211471/
+  	maxiEngine.loadSample("piano.wav", piano);
+  	maxiEngine.loadSample("guitar.wav", guitar);
+  	maxiEngine.loadSample("celesta.wav", celesta);
+  
+maxiEngine.loadSample("Harp.wav", Harp);
+	  //show an oscilloscope and freqscope
+
+		maxiEngine.play = function() {
+          
+      myClock.ticker();
+        
+        if (myClock.tick) {
+            
+            scratch=0;
+            counter++;
+        }
+
+     // if (myClock.tick && counter%32===1) {
+           // piano.trigger();            
+       // }
+        if (myClock.tick && counter%8===2) {
+            guitar.trigger();            
+        }
+           if (myClock.tick && counter%16===3) {
+            Harp.trigger();            
+        }
+
+
+      
+
+       
+        
+       var out = piano.playOnce() + Harp.playOnce() + guitar.play(1 + myOsc.sinebuf(1000));
+                                                                  //+ celesta.playOnce(myOsc2.saw((0.14583333333334) * 500));      	
+        return out * 0.2;
+		
+        }
+	}
+
+     playAudio();
+</script>
+
+</html>
